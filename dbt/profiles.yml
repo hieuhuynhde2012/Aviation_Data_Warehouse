@@ -1,0 +1,12 @@
+aviation_dw:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('WAREHOUSE_HOST', 'postgres-warehouse') }}"
+      user: "{{ env_var('WAREHOUSE_USER', 'aviation') }}"
+      password: "{{ env_var('WAREHOUSE_PASSWORD', 'aviation') }}"
+      port: 5432
+      dbname: "{{ env_var('WAREHOUSE_DB', 'aviation_dw') }}"
+      schema: public
+      threads: 4

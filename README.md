@@ -1,0 +1,138 @@
+# Dockerized Aviation Data Warehouse Pipeline
+
+Local portfolio project that simulates a cloud-style aviation analytics platform with Airflow, MinIO, PostgreSQL, dbt, and Superset.
+
+![Dockerized Aviation Data Warehouse Pipeline architecture](docs/architecture_diagram.svg)
+
+## What This Builds
+
+- Public flight operations source: BTS Airline On-Time Performance.
+- Public reference source: OurAirports airports, countries, and regions.
+- Reproducible synthetic business source: bookings and payments linked to real flight routes.
+- Intentional dirty data profile for realistic data engineering work: duplicates, casing/spacing issues, status synonyms, missing optional fields, negative values, timestamp ordering issues, and payment mismatches.
+- S3-like raw storage in MinIO with partitioned object keys.
+- PostgreSQL warehouse with raw, staging, intermediate, mart, and metadata schemas.
+- dbt transformations for dimensions, facts, and 7 analytics marts.
+- Airflow orchestration with retries, validation, raw load, dbt run/test, and metadata tracking.
+- Custom Airflow image with dependencies baked in for stable local runtime.
+- Superset-ready marts for aviation sales, booking, route, airport, customer, and delay dashboards.
+- Production-style DQ controls: required-column checks, record-level error logging, quarantine, reconciliation, CDC-style dedupe, and idempotent file loads.
+
+## Repository Layout
+
+```text
+airflow/dags/                  Airflow DAGs
+data/input/                    Downloaded public source data
+data/generated/                Synthetic bookings and payments
+data/quality_reports/          Validation output
+dbt/                           dbt project and tests
+ingestion/                     Download, generate, validate, upload, load scripts
+sql/                           Demo and validation queries for interviews
+warehouse/                     PostgreSQL init SQL
+superset/                      Dashboard exports and screenshots
+docs/                          Architecture and portfolio documentation
+```
+
+## Data Sources
+
+| Source | Type | Purpose |
+| --- | --- | --- |
+| BTS Airline On-Time Performance | Public flight operations | Flight status, delay, cancellation, route performance |
+| OurAirports CSV | Public reference data | Airport, country, region dimensions |
+| Synthetic Booking Generator | Reproducible generated data | Booking, payment, revenue, customer segment analytics |
+
+Configured URLs are in `.env.example`.
+
+## Data Quality And Cleaning Flow
+
+Raw data is intentionally not perfectly clean. The pipeline keeps the dirty records in `raw.*`, then dbt staging models standardize and deduplicate them before facts and marts are built.
+
+Examples currently generated:
+
+- Duplicate booking/payment events for late-arriving updates.
+- Mixed case and padded values: `paid`, ` SUCCESS `, `mobile app`, ` jfk `.
+- Business synonyms: `CONF`, `Booked`, `VOID`, `DECLINED`, `CHARGEBACK`.
+- Missing optional customer IDs, normalized to `UNKNOWN_CUSTOMER`.
+- Negative ticket values, corrected with `abs(ticket_price)` in staging.
+- Out-of-order `updated_at`, corrected with `greatest(updated_at, created_at)`.
+- Airport code suffix noise like `JFK-T1`, normalized back to `JFK`.
+
+The validation report at `data/quality_reports/validation_report.json` includes a `quality_profile` section with counts for these issues.
+
+Production-like controls are documented in [docs/data_quality.md](docs/data_quality.md):
+
+- Required-column checks.
+- Controlled vocabulary standardization.
+- Record-level DQ logging instead of silent drops.
+- Quarantine files and `quarantine.invalid_records`.
+- Source-to-target reconciliation.
+- Idempotent file loads using checksums.
+- CDC-style duplicate event handling.
+- Incremental partition replace logic for reruns/backfills.
+
+## Quick Start
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
+Open:
+
+- Airflow: <http://localhost:8080> (`admin` / `admin`)
+- MinIO: <http://localhost:9001> (`minioadmin` / `minioadmin`)
+- Superset: <http://localhost:8088> (`admin` / `admin`)
+- Warehouse: `localhost:5433`, database `aviation_dw`, user `aviation`, password `aviation`
+
+Trigger `aviation_daily_pipeline` from Airflow. The DAG downloads sources, generates synthetic data, uploads raw objects to MinIO, validates files, loads raw tables, runs dbt, tests data quality, and writes metadata.
+
+Bootstrap Superset assets after the DAG/dbt run succeeds:
+
+```powershell
+Get-Content superset/setup_assets.py | docker compose exec -T superset python -
+```
+
+Then open the `Aviation Data Warehouse Operations` dashboard in Superset.
+
+Run interview/demo SQL checks:
+
+```powershell
+Get-Content sql/demo_queries.sql | docker compose exec -T postgres-warehouse psql -U aviation -d aviation_dw
+```
+
+See [docs/evidence_checklist.md](docs/evidence_checklist.md) for screenshots and proof points to capture.
+See [docs/project_walkthrough.md](docs/project_walkthrough.md) for the portfolio/interview narrative.
+
+Manual dbt commands:
+
+```bash
+docker compose exec dbt dbt run
+docker compose exec dbt dbt test
+docker compose exec dbt dbt docs generate
+```
+
+## Warehouse Layers
+
+| Layer | Examples |
+| --- | --- |
+| Raw | `raw_bts_flights`, `raw_airports`, `raw_bookings`, `raw_payments` |
+| Staging | `stg_flights`, `stg_airports`, `stg_bookings`, `stg_payments` |
+| Intermediate | `int_route_daily`, `int_flight_booking_bridge`, `int_customer_booking` |
+| Dimensions | `dim_airport`, `dim_airline`, `dim_route`, `dim_customer`, `dim_date` |
+| Facts | `fact_flight_status`, `fact_booking`, `fact_payment` |
+| Marts | 7 dashboard-facing mart tables |
+| Metadata | `pipeline_file_registry`, `pipeline_run_log` |
+
+## Seven Marts
+
+- `mart_sales_performance`
+- `mart_booking_status_realtime`
+- `mart_booking_trend_daily`
+- `mart_route_performance`
+- `mart_airport_performance`
+- `mart_customer_segment`
+- `mart_flight_delay_analysis`
+
+## Honesty Note
+
+Booking and payment data is synthetic because real airline commercial booking data is not generally public and may contain private or commercially sensitive information. This project is a Dockerized simulation of a cloud-style aviation data warehouse, not a claim of AWS deployment.

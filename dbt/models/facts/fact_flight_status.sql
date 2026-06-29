@@ -1,0 +1,21 @@
+select
+    flight_id,
+    flight_date,
+    airline,
+    origin_airport,
+    destination_airport,
+    route,
+    distance_miles,
+    dep_delay_minutes,
+    arr_delay_minutes,
+    greatest(dep_delay_minutes, arr_delay_minutes) as delay_minutes,
+    case when greatest(dep_delay_minutes, arr_delay_minutes) >= 15 then true else false end as is_delayed,
+    cancelled = 1 as is_cancelled,
+    diverted = 1 as is_diverted,
+    cancellation_code,
+    carrier_delay,
+    weather_delay,
+    nas_delay,
+    security_delay,
+    late_aircraft_delay
+from {{ ref('stg_flights') }}

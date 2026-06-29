@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Dockerized Aviation Data Warehouse Pipeline Architecture</title>
+  <desc id="desc">Architecture diagram showing data sources, Airflow orchestration, MinIO raw storage, PostgreSQL warehouse, dbt transformations, Superset dashboards, and metadata tracking.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#334155"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#0f172a" flood-opacity="0.13"/>
+    </filter>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .title { font: 700 34px Arial, sans-serif; fill: #102033; }
+      .subtitle { font: 400 16px Arial, sans-serif; fill: #526173; }
+      .group-title { font: 700 16px Arial, sans-serif; fill: #263244; }
+      .box-title { font: 700 17px Arial, sans-serif; fill: #102033; }
+      .box-text { font: 400 13px Arial, sans-serif; fill: #475569; }
+      .small { font: 400 12px Arial, sans-serif; fill: #64748b; }
+      .pill { font: 700 12px Arial, sans-serif; fill: #ffffff; }
+      .panel { fill: #ffffff; stroke: #d8e1ee; stroke-width: 1.5; }
+      .source { fill: #ffffff; stroke: #2f80ed; stroke-width: 2; }
+      .airflow { fill: #ffffff; stroke: #f97316; stroke-width: 2; }
+      .minio { fill: #ffffff; stroke: #0f9f6e; stroke-width: 2; }
+      .postgres { fill: #ffffff; stroke: #7c3aed; stroke-width: 2; }
+      .dbt { fill: #ffffff; stroke: #db2777; stroke-width: 2; }
+      .superset { fill: #ffffff; stroke: #0891b2; stroke-width: 2; }
+      .metadata { fill: #ffffff; stroke: #64748b; stroke-width: 2; }
+      .arrow { stroke: #334155; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #64748b; stroke-width: 2; fill: none; stroke-dasharray: 7 7; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1440" height="900"/>
+  <text x="72" y="62" class="title">Dockerized Aviation Data Warehouse Pipeline</text>
+  <text x="72" y="92" class="subtitle">BTS + OurAirports + synthetic booking/payment events -> MinIO -> PostgreSQL -> dbt marts -> Superset dashboards</text>
+
+  <rect x="56" y="128" width="1328" height="690" rx="18" class="panel"/>
+
+  <text x="92" y="166" class="group-title">1. Data Sources</text>
+  <text x="376" y="166" class="group-title">2. Orchestration</text>
+  <text x="610" y="166" class="group-title">3. Raw Lake</text>
+  <text x="824" y="166" class="group-title">4. Warehouse</text>
+  <text x="1060" y="166" class="group-title">5. Transform</text>
+  <text x="1238" y="166" class="group-title">6. BI</text>
+
+  <rect x="84" y="200" width="235" height="112" rx="10" class="source" filter="url(#shadow)"/>
+  <text x="108" y="234" class="box-title">BTS On-Time CSV</text>
+  <text x="108" y="260" class="box-text">Flight status, delay,</text>
+  <text x="108" y="280" class="box-text">cancellation, route</text>
+  <text x="108" y="300" class="small">Default: 2026-04</text>
+
+  <rect x="84" y="344" width="235" height="112" rx="10" class="source" filter="url(#shadow)"/>
+  <text x="108" y="378" class="box-title">OurAirports CSV</text>
+  <text x="108" y="404" class="box-text">Airport, country,</text>
+  <text x="108" y="424" class="box-text">region reference data</text>
+  <text x="108" y="444" class="small">Public CSV snapshots</text>
+
+  <rect x="84" y="488" width="235" height="124" rx="10" class="source" filter="url(#shadow)"/>
+  <text x="108" y="522" class="box-title">Synthetic Events</text>
+  <text x="108" y="548" class="box-text">Bookings, payments,</text>
+  <text x="108" y="568" class="box-text">revenue, customers</text>
+  <text x="108" y="588" class="small">Seeded and reproducible</text>
+
+  <rect x="370" y="320" width="196" height="176" rx="12" class="airflow" filter="url(#shadow)"/>
+  <text x="398" y="356" class="box-title">Apache Airflow</text>
+  <text x="398" y="384" class="box-text">DAG scheduling</text>
+  <text x="398" y="406" class="box-text">Retries and dependency</text>
+  <text x="398" y="428" class="box-text">Validation tasks</text>
+  <text x="398" y="450" class="box-text">dbt run/test trigger</text>
+  <rect x="398" y="466" width="92" height="24" rx="12" fill="#f97316"/>
+  <text x="414" y="483" class="pill">DAILY 02:00</text>
+
+  <rect x="620" y="224" width="180" height="104" rx="10" class="minio" filter="url(#shadow)"/>
+  <text x="646" y="258" class="box-title">MinIO Raw</text>
+  <text x="646" y="284" class="box-text">aviation-raw</text>
+  <text x="646" y="304" class="small">Partitioned files</text>
+
+  <rect x="620" y="368" width="180" height="104" rx="10" class="minio" filter="url(#shadow)"/>
+  <text x="646" y="402" class="box-title">MinIO Archive</text>
+  <text x="646" y="428" class="box-text">aviation-archive</text>
+  <text x="646" y="448" class="small">Successful loads</text>
+
+  <rect x="620" y="512" width="180" height="104" rx="10" class="minio" filter="url(#shadow)"/>
+  <text x="646" y="546" class="box-title">Quality Reports</text>
+  <text x="646" y="572" class="box-text">Schema checks</text>
+  <text x="646" y="592" class="small">Row count + checksum</text>
+
+  <rect x="850" y="206" width="188" height="74" rx="10" class="postgres" filter="url(#shadow)"/>
+  <text x="880" y="238" class="box-title">raw schema</text>
+  <text x="880" y="260" class="small">Source-shaped tables</text>
+
+  <rect x="850" y="308" width="188" height="74" rx="10" class="postgres" filter="url(#shadow)"/>
+  <text x="880" y="340" class="box-title">staging schema</text>
+  <text x="880" y="362" class="small">Clean names and types</text>
+
+  <rect x="850" y="410" width="188" height="74" rx="10" class="postgres" filter="url(#shadow)"/>
+  <text x="880" y="442" class="box-title">intermediate</text>
+  <text x="880" y="464" class="small">Reusable business logic</text>
+
+  <rect x="850" y="512" width="188" height="88" rx="10" class="postgres" filter="url(#shadow)"/>
+  <text x="880" y="544" class="box-title">mart schema</text>
+  <text x="880" y="566" class="small">Dimensions, facts,</text>
+  <text x="880" y="584" class="small">7 analytics marts</text>
+
+  <rect x="1090" y="300" width="178" height="178" rx="12" class="dbt" filter="url(#shadow)"/>
+  <text x="1122" y="336" class="box-title">dbt Core</text>
+  <text x="1122" y="364" class="box-text">Staging models</text>
+  <text x="1122" y="386" class="box-text">Dimensions + facts</text>
+  <text x="1122" y="408" class="box-text">Incremental marts</text>
+  <text x="1122" y="430" class="box-text">Data tests</text>
+  <rect x="1122" y="448" width="74" height="24" rx="12" fill="#db2777"/>
+  <text x="1141" y="465" class="pill">SQL</text>
+
+  <rect x="1246" y="230" width="112" height="300" rx="12" class="superset" filter="url(#shadow)"/>
+  <text x="1270" y="264" class="box-title">Superset</text>
+  <text x="1270" y="296" class="box-text">Executive</text>
+  <text x="1270" y="318" class="box-text">overview</text>
+  <text x="1270" y="354" class="box-text">Booking</text>
+  <text x="1270" y="376" class="box-text">trend</text>
+  <text x="1270" y="412" class="box-text">Flight and</text>
+  <text x="1270" y="434" class="box-text">route KPIs</text>
+  <rect x="1270" y="480" width="62" height="24" rx="12" fill="#0891b2"/>
+  <text x="1284" y="497" class="pill">BI</text>
+
+  <rect x="370" y="648" width="668" height="94" rx="12" class="metadata" filter="url(#shadow)"/>
+  <text x="400" y="684" class="box-title">Metadata Tracking in PostgreSQL</text>
+  <text x="400" y="712" class="box-text">pipeline_file_registry: source, partition, file size, row count, checksum, load status</text>
+  <text x="400" y="734" class="box-text">pipeline_run_log: DAG run, input rows, loaded rows, dbt/test status, runtime</text>
+
+  <path class="arrow" d="M319 256 C345 256 346 345 370 356"/>
+  <path class="arrow" d="M319 400 L370 400"/>
+  <path class="arrow" d="M319 550 C345 550 346 463 370 452"/>
+
+  <path class="arrow" d="M566 372 C590 332 594 286 620 276"/>
+  <path class="arrow" d="M566 410 C590 414 594 418 620 420"/>
+  <path class="arrow" d="M566 448 C590 500 594 548 620 564"/>
+
+  <path class="arrow" d="M800 276 C826 276 826 244 850 244"/>
+  <path class="arrow" d="M944 280 L944 308"/>
+  <path class="arrow" d="M944 382 L944 410"/>
+  <path class="arrow" d="M944 484 L944 512"/>
+
+  <path class="arrow" d="M1038 556 C1062 520 1066 456 1090 432"/>
+  <path class="arrow" d="M1268 390 L1246 390"/>
+  <path class="arrow" d="M1038 556 C1120 556 1178 516 1246 478"/>
+
+  <path class="dash" d="M468 496 L468 648"/>
+  <path class="dash" d="M710 616 L710 648"/>
+  <path class="dash" d="M944 600 L944 648"/>
+
+  <rect x="84" y="780" width="1274" height="1.5" fill="#d8e1ee"/>
+  <text x="92" y="806" class="small">Local services: Airflow UI :8080 | MinIO Console :9001 | PostgreSQL warehouse :5433 | Superset :8088</text>
+</svg>

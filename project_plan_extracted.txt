@@ -1,0 +1,527 @@
+
+===== PAGE 1 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  1
+Dockerized Aviation
+Data Warehouse Pipeline
+Project cá nhân mô phỏng hệ thống data warehouse hàng không theo hướng gần thực 
+tế, chạy local bằng Docker
+Từ ý tưởng - kiến trúc - nguồn dữ liệu - phương án triển khai - output cho CV/portfolio
+Mục tiêu chính
+Tái hiện experience 'Aviation Data Warehouse Pipeline' trong CV: 3 nguồn dữ liệu, Airflow orchestration, raw object 
+storage kiểu S3, warehouse, dbt SQL transformations, 7 data marts, dashboard BI và metadata tracking - nhưng 
+không dùng cloud trả phí.
+Phiên bản: 1.0  |  Ngày: 29/06/2026
+Prepared for personal portfolio / CV strengthening
+
+===== PAGE 2 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  2
+Mục lục
+1. Bối cảnh và ý tưởng project
+2. Kiến trúc tổng thể Dockerized
+3. Nguồn dữ liệu sử dụng
+4. Thiết kế schema và data marts
+5. Airflow DAG và luồng xử lý
+6. dbt transformation, test và incremental load
+7. Dashboard BI và chỉ số phân tích
+8. Phương án triển khai bằng Docker Compose
+9. Roadmap thực hiện
+10. Output đưa vào CV/portfolio
+11. Rủi ro, giới hạn và cách trình bày trung thực
+12. Nguồn tham khảo
+
+===== PAGE 3 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  3
+1. Bối cảnh và ý tưởng project
+Project này được thiết kế để tái hiện một sản phẩm data engineering gần giống mô tả kinh nghiệm làm 
+việc: xây dựng data warehouse cho ngành aviation, ingest dữ liệu từ nhiều nguồn, chuẩn hóa, transform, 
+tạo marts phục vụ dashboard và theo dõi pipeline metadata.
+Điểm khác biệt: thay vì sử dụng AWS S3, Redshift/Snowflake, Glue, Lambda, DynamoDB và Tableau thật, 
+project cá nhân sẽ dùng bộ công cụ local bằng Docker để mô phỏng chức năng tương ứng. Cách này tiết 
+kiệm chi phí nhưng vẫn thể hiện được tư duy thiết kế pipeline production-like.
+Mục tiêu CV Cách thể hiện trong project cá nhân
+Có kinh nghiệm pipeline thực tế Repo có architecture, DAG, dbt models, data quality tests, 
+dashboard và README chuyên nghiệp.
+Xử lý nhiều nguồn dữ liệu Kết hợp BTS flight data, OurAirports reference data và 
+synthetic booking/payment events.
+Tái hiện cloud data warehouse MinIO mô phỏng S3, PostgreSQL mô phỏng warehouse, 
+Superset thay Tableau, metadata table thay DynamoDB.
+Có số liệu performance Benchmark runtime sau khi chạy thật: row count, thời gian 
+ingest, thời gian dbt run/test, dung lượng file.
+Không nói quá cloud experience Ghi rõ đây là Dockerized simulation of cloud-style aviation 
+data warehouse.
+1.1. Tên project đề xuất
+Tên nên dùng
+Dockerized Aviation Data Warehouse Pipeline
+Tên này thể hiện rõ 3 yếu tố quan trọng: domain aviation, kỹ năng data warehouse và cách triển khai bằng 
+Docker. Đây là hướng phù hợp để đưa lên GitHub portfolio, không gây hiểu lầm rằng project cá nhân đang 
+chạy trên AWS thật.
+1.2. Phạm vi MVP
+ Generate hoặc tải dữ liệu theo partition ngày/tháng.
+ Upload raw files vào MinIO theo layout giống S3 bucket.
+ Load raw CSV vào PostgreSQL warehouse.
+ Chạy dbt models để tạo staging, intermediate, dimension, fact và 7 data marts.
+ Chạy dbt tests và custom validation cho row count, null, duplicate, schema mismatch.
+ Build dashboard trong Superset để thay Tableau.
+ Ghi metadata tracking cho từng file và từng pipeline run.
+2. Kiến trúc tổng thể Dockerized
+Kiến trúc được thiết kế theo mô hình lakehouse/warehouse đơn giản: source files -> raw object storage -> 
+warehouse raw schema -> dbt staging/intermediate/mart -> dashboard BI. Airflow là orchestration layer 
+điều phối toàn bộ pipeline.
+Source 1: BTS Airline On-Time CSV
+        | flight status, delay, cancellation, route
+        v
+Source 2: OurAirports CSV
+        | airport, country, region reference
+        v
+Source 3: Synthetic Booking/Payment Events
+        | booking, revenue, customer, payment status
+        v
+Apache Airflow DAG
+        v
+MinIO bucket: raw / bronze / archive
+        v
+
+===== PAGE 4 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  4
+PostgreSQL Warehouse: raw / staging / intermediate / mart
+        v
+dbt Core: SQL models + tests + incremental transformations
+        v
+Apache Superset Dashboard: sales, booking, route, airport, delay analytics
+Cloud gốc trong CV Docker/local replacement Vai trò
+Amazon S3 MinIO Object storage cho raw/bronze files, 
+partition theo ngày.
+Redshift / Snowflake PostgreSQL Warehouse local để load raw data và chạy 
+SQL analytics.
+Apache Airflow Apache Airflow Docker Orchestrate DAG, retries, dependency, 
+scheduling.
+AWS Glue Python validation + dbt staging Clean, standardize, schema validation 
+trước khi load marts.
+dbt SQL dbt Core SQL transformation, data marts, tests, 
+documentation.
+AWS Lambda Airflow sensor/task Mô phỏng event-driven processing khi có 
+file mới.
+DynamoDB PostgreSQL metadata tables Track file status, checksum, row count, 
+pipeline run.
+Tableau Apache Superset Dashboard BI local, charts, SQL Lab, 
+datasets.
+2.1. Docker services
+services:
+  airflow-webserver      # UI Airflow
+  airflow-scheduler      # schedule DAG
+  airflow-worker         # optional, nế5u dùng CeleryExecutor
+  postgres-airflow       # metadata DB cho Airflow
+  postgres-warehouse     # data warehouse chính
+  minio                  # S3-compatible object storage
+  minio-init             # tạo bucket và folder convention
+  dbt                    # chạy dbt run/test/docs
+  superset               # dashboard BI
+MVP có thể dùng Airflow LocalExecutor để nhẹ hơn. Khi cần mô phỏng production hơn, chuyển sang 
+CeleryExecutor và thêm worker + Redis.
+3. Nguồn dữ liệu sử dụng
+Với project cá nhân, không nên cố tìm booking/sales thật của airline vì dữ liệu này gần như không public và 
+có ràng buộc privacy/commercial. Cách hợp lý là dùng public flight operation data thật, public airport 
+reference data thật, rồi generate booking/payment synthetic nhưng có liên kết logic với flight/route thật.
+Source Loại dữ liệu Dùng cho Ghi chú
+BTS Airline On-Time Statistics Public flight operation data flight delay, cancellation, airline, 
+origin, destination, route 
+performance
+Nguồn chính cho 
+fact_flight_status và các mart 
+delay/airport/route.
+OurAirports CSV Public airport reference airport, country, region, 
+IATA/ICAO, latitude/longitude
+Dùng cho dim_airport, 
+dim_country, dim_region.
+Synthetic Booking Generator Synthetic nhưng reproducible booking, payment, revenue, 
+customer segment
+Tự generate để mô phỏng data 
+sales/booking không public.
+OpenFlights Historical route/airline reference optional dim_airline/dim_route Chỉ dùng optional vì route 
+database có giá trị lịch sử, 
+không phải realtime.
+3.1. Source 1 - BTS Airline On-Time Statistics
+Vai trò: làm nguồn dữ liệu operational thật cho ngành aviation. Dataset này phù hợp với các mart phân tích 
+delay, cancellation, route performance, airport performance và booking trend giả lập dựa trên flight 
+schedule.
+
+===== PAGE 5 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  5
+ Field quan trọng: flight date, carrier, origin, destination, scheduled/actual departure, scheduled/actual 
+arrival, cancelled, diverted, delay minutes, delay cause.
+ Pipeline sẽ download hoặc đặt sẵn file CSV theo tháng/ngày trong thư mục data/input/bts.
+ Airflow load file vào MinIO raw bucket theo partition source=bts/year=YYYY/month=MM.
+ dbt chuẩn hóa naming, convert type và join với airport reference để tạo fact_flight_status.
+3.2. Source 2 - OurAirports CSV
+Vai trò: làm dimension/reference data cho airport và địa lý. Source này giúp data model nhìn giống 
+warehouse thực tế vì các fact flight/booking sẽ join với dim_airport, dim_country, dim_region.
+ File nên dùng: airports.csv, countries.csv, regions.csv.
+ Field quan trọng: ident, type, name, latitude_deg, longitude_deg, iso_country, iso_region, municipality, 
+iata_code, gps_code.
+ Dùng IATA code để join với BTS origin/destination nếu có match; fallback bằng code mapping nếu cần.
+3.3. Source 3 - Synthetic Booking & Payment Events
+Vai trò: mô phỏng phần business data không public như booking, payment, revenue và customer segment. 
+Synthetic data phải reproducible, có seed, có logic business rõ ràng, không random vô nghĩa.
+booking_id, customer_id, flight_id, flight_date, airline,
+origin_airport, destination_airport, route,
+booking_time, booking_channel, payment_method,
+ticket_price, currency, booking_status, payment_status,
+is_refunded, created_at, updated_at
+Logic generate đề xuất: lấy danh sách flight từ BTS, mỗi flight sinh 30-180 bookings, ticket_price phụ thuộc 
+route distance/airline/season, booking_status phân bổ theo tỷ lệ CONFIRMED/CANCELLED/PENDING, 
+payment_status phân bổ theo PAID/FAILED/REFUNDED.
+3.4. Raw file layout
+s3://aviation-raw/bts_on_time/year=2026/month=04/bts_2026_04.csv
+s3://aviation-raw/ourairports/snapshot_date=2026-06-29/airports.csv
+s3://aviation-raw/booking_events/dt=2026-06-29/bookings.csv
+s3://aviation-raw/payment_events/dt=2026-06-29/payments.csv
+s3://aviation-archive/... # archive after successful load
+4. Thiết kế schema và data marts
+Thiết kế warehouse nên chia layer rõ ràng để thể hiện kỹ năng data modeling: raw giữ nguyên dữ liệu 
+nguồn, staging chuẩn hóa kiểu dữ liệu và tên cột, intermediate xử lý business logic, mart phục vụ 
+dashboard.
+Layer Schema/Table Mục đích
+Raw raw_bts_flights, raw_airports, 
+raw_bookings, raw_payments
+Load gần nguyên bản từ CSV để trace 
+nguồn.
+Staging stg_flights, stg_airports, stg_bookings, 
+stg_payments
+Rename column, cast type, validate basic 
+schema.
+Intermediate int_route_daily, int_customer_booking, 
+int_flight_booking_bridge
+Join, enrich, aggregate theo logic 
+reusable.
+Dimension dim_airport, dim_airline, dim_route, 
+dim_customer, dim_date
+Chuẩn hóa chiều phân tích.
+Fact fact_flight_status, fact_booking, 
+fact_payment
+Sự kiện chính dùng cho analytics.
+Mart 7 mart tables Bảng phục vụ dashboard và business KPI.
+4.1. 7 data marts
+Mart Mục đích KPI chính
+mart_sales_performance Theo dõi doanh thu và hiệu quả bán vé revenue, booking count, average ticket 
+
+===== PAGE 6 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  6
+Mart Mục đích KPI chính
+value, refund amount
+mart_booking_status_realtime Mô phỏng trạng thái booking gần realtime confirmed, pending, cancelled, failed 
+payment, latest update time
+mart_booking_trend_daily Phân tích xu hướng booking theo ngày/giờ bookings by date/hour, growth rate, route 
+trend
+mart_route_performance Hiệu quả từng route top revenue route, cancellation rate, delay 
+impact
+mart_airport_performance Hiệu quả airport origin/destination volume, delay count, cancellation count
+mart_customer_segment Phân khúc khách hàng new/returning, high-value, channel, spend 
+band
+mart_flight_delay_analysis Phân tích delay/cancellation avg delay, delayed rate, delay cause, 
+carrier/airport delay
+4.2. Metadata tracking tables
+Metadata tracking là điểm rất đáng làm vì nó mô phỏng DynamoDB trong cloud pipeline. Bảng này giúp 
+chứng minh pipeline không chỉ chạy được mà còn có observability.
+pipeline_file_registry
+- file_id
+- source_name
+- file_path
+- partition_key
+- file_size_bytes
+- row_count
+- checksum_md5
+- load_status
+- started_at
+- completed_at
+- error_message
+pipeline_run_log
+- run_id
+- dag_id
+- execution_date
+- source_count
+- total_input_rows
+- total_loaded_rows
+- dbt_status
+- test_status
+- runtime_seconds
+- created_at
+5. Airflow DAG và luồng xử lý
+Airflow sẽ thể hiện kỹ năng orchestration: dependency, retry, timeout, scheduling, logging, backfill và 
+failure handling. DAG chính nên chạy daily, còn DAG phụ dùng cho backfill theo khoảng ngày/tháng.
+start
+  -> generate_or_download_sources
+  -> upload_raw_files_to_minio
+  -> validate_raw_schema_and_row_count
+  -> load_raw_csv_to_postgres
+  -> run_dbt_staging
+  -> run_dbt_intermediate
+  -> run_dbt_marts
+  -> run_dbt_tests
+  -> update_pipeline_metadata
+  -> refresh_superset_datasets
+  -> send_pipeline_summary
+end
+
+===== PAGE 7 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  7
+5.1. Task breakdown
+Task Output Failure handling
+generate_or_download_sources CSV files trong /data/input Retry 2 lần; fail nếu thiếu file bắt buộc.
+upload_raw_files_to_minio Object trong MinIO raw bucket Checksum sau upload; archive duplicate.
+validate_raw_schema_and_row_count Validation report Fail nếu thiếu column, row_count = 0, sai 
+encoding.
+load_raw_csv_to_postgres raw_* tables Transaction rollback nếu load lỗi.
+run_dbt_staging/intermediate/marts stg/int/mart tables dbt exit code != 0 thì fail DAG.
+run_dbt_tests test results Fail nếu unique/not_null/relationship test 
+không pass.
+update_pipeline_metadata pipeline_run_log Ghi cả success/failure để trace.
+5.2. Airflow retry config đề xuất
+default_args = {
+    "owner": "data-engineering",
+    "retries": 2,
+    "retry_delay": timedelta(minutes=2),
+    "execution_timeout": timedelta(minutes=30),
+}
+schedule = "0 2 * * *"  # daily 02:00 local
+catchup = False          # MVP; bật True cho backfill DAG riếng
+6. dbt transformation, test và incremental load
+dbt là phần chứng minh kỹ năng ELT/SQL transformation. Mỗi model nên có file .sql và schema.yml mô tả 
+columns, tests, relationships và documentation.
+dbt/models/
+  staging/
+    stg_flights.sql
+    stg_airports.sql
+    stg_bookings.sql
+    stg_payments.sql
+  intermediate/
+    int_route_daily.sql
+    int_flight_booking_bridge.sql
+    int_customer_booking.sql
+  marts/
+    mart_sales_performance.sql
+    mart_booking_status_realtime.sql
+    mart_booking_trend_daily.sql
+    mart_route_performance.sql
+    mart_airport_performance.sql
+    mart_customer_segment.sql
+    mart_flight_delay_analysis.sql
+6.1. Tests nên có
+ not_null: booking_id, flight_id, airport_code, flight_date, ticket_price.
+ unique: booking_id, payment_id, airport_code trong dimension.
+ accepted_values: booking_status, payment_status, airport_type.
+ relationships: origin_airport/destination_airport phải tồn tại trong dim_airport nếu code match được.
+ custom test: ticket_price >= 0, delay_minutes không âm khi delay flag true, row_count mart không vượt bất 
+thường so với source.
+6.2. Incremental strategy
+Với bảng lớn như fact_booking và mart_booking_trend_daily, nên dùng incremental model theo partition 
+date. Khi rerun một ngày cụ thể, chỉ rebuild partition đó thay vì rebuild toàn bộ warehouse.
+{{ config(
+
+===== PAGE 8 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  8
+    materialized='incremental',
+    unique_key='booking_id'
+) }}
+select *
+from {{ ref('stg_bookings') }}
+{% if is_incremental() %}
+where updated_at > (select max(updated_at) from {{ this }})
+{% endif %}
+7. Dashboard BI và chỉ số phân tích
+Superset sẽ thay Tableau để demo kết quả cuối. Dashboard nên có 3 nhóm chính: executive overview, 
+booking trend và flight/route performance. README nên có screenshot dashboard để reviewer thấy output 
+cụ thể.
+Dashboard tab Charts/KPI đề xuất
+Executive Overview Total revenue, total bookings, booking success rate, average 
+ticket value, refund amount, top 10 routes by revenue.
+Booking Trend Booking by day/hour, status distribution, revenue trend, 
+booking channel performance, payment method failure rate.
+Flight & Route Performance Average delay minutes, delayed flight percentage, cancellation 
+by route, airport delay ranking, carrier delay comparison.
+7.1. Demo screenshots cần có trong README
+ Airflow DAG graph view chạy success.
+ MinIO bucket raw/bronze/archive có partition rõ ràng.
+ PostgreSQL tables ở raw/staging/mart schema.
+ dbt lineage hoặc dbt docs page.
+ Superset dashboard với KPI và charts.
+ Terminal benchmark: runtime, row count, dbt test result.
+8. Phương án triển khai bằng Docker Compose
+Repo nên được thiết kế sao cho người khác clone về có thể chạy demo bằng vài lệnh. Đây là điểm quan 
+trọng để portfolio có giá trị hơn một project chỉ viết trên giấy.
+8.1. Cấu trúc repository
+aviation-data-warehouse/
+  docker-compose.yml
+  README.md
+  .env.example
+  airflow/
+    dags/
+      aviation_daily_pipeline.py
+      aviation_backfill_pipeline.py
+  ingestion/
+    generate_booking_events.py
+    load_to_minio.py
+    load_to_warehouse.py
+    validate_files.py
+  dbt/
+    dbt_project.yml
+    models/staging/
+    models/intermediate/
+    models/marts/
+    tests/
+    macros/
+  warehouse/
+    init.sql
+
+===== PAGE 9 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  9
+    schemas.sql
+  superset/
+    dashboards/
+    screenshots/
+  docs/
+    architecture.md
+    data_model.md
+    pipeline_flow.md
+    performance_report.md
+8.2. Lệnh chạy demo
+# 1. Clone project
+git clone <repo-url>
+cd aviation-data-warehouse
+# 2. Copy environment
+cp .env.example .env
+# 3. Start all services
+docker compose up -d
+# 4. Trigger Airflow DAG hoặc bật schedule
+# Airflow UI: http://localhost:8080
+# 5. Run dbt manually nế5u cầVn
+docker compose exec dbt dbt run
+docker compose exec dbt dbt test
+# 6. Open Superset dashboard
+# Superset UI: http://localhost:8088
+8.3. Docker Compose MVP
+Bản MVP nên ưu tiên chạy ổn định trước: Airflow webserver/scheduler, PostgreSQL cho Airflow metadata, 
+PostgreSQL warehouse, MinIO, dbt container và Superset. Sau khi chạy ổn mới thêm worker, Redis, 
+monitoring hoặc CI.
+9. Roadmap thực hiện
+Roadmap bên dưới ưu tiên tạo project có thể chạy thật trong thời gian ngắn, sau đó mới làm đẹp phần 
+dashboard, README và benchmark.
+Phase Thời gian Deliverables
+Phase 1 - MVP pipeline 3-4 ngày Docker Compose, Airflow DAG, MinIO 
+bucket, PostgreSQL schemas, 
+generate/load 3 source datasets.
+Phase 2 - dbt modeling 3-4 ngày staging, intermediate, dimension/fact, 7 
+mart models, dbt tests.
+Phase 3 - Dashboard 2-3 ngày Superset datasets, charts, 3 dashboard 
+tabs, screenshots.
+Phase 4 - Production-like polish 2-3 ngày metadata tracking, checksum, row count 
+validation, retry/failure handling, 
+benchmark report.
+Phase 5 - Portfolio packaging 1-2 ngày README, architecture diagram, demo 
+commands, CV bullets, demo video 
+optional.
+9.1. Definition of Done
+ Một lệnh docker compose up -d có thể start toàn bộ stack.
+
+===== PAGE 10 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  10
+ Airflow DAG chạy thành công end-to-end ít nhất 1 ngày partition.
+ Có ít nhất 1 batch khoảng 1M synthetic booking rows hoặc cấu hình scale nhỏ/lớn bằng biến môi trường.
+ dbt run và dbt test pass.
+ 7 mart tables có dữ liệu và được Superset sử dụng.
+ README có screenshot và performance benchmark thực tế trên máy local.
+10. Output đưa vào CV/portfolio
+10.1. CV bullets mẫu
+Built a Dockerized aviation data warehouse pipeline simulating a cloud-style
+analytics platform, processing public flight operation data and synthetic
+booking/payment events into 7 analytical data marts.
+Orchestrated end-to-end ETL/ELT workflows with Apache Airflow, using MinIO as
+an S3-compatible raw data lake and PostgreSQL as the local analytical warehouse.
+Implemented dbt SQL models for staging, dimensional modeling, incremental
+transformations, and data quality tests across sales, booking, route, airport,
+customer, and delay analytics marts.
+Developed Apache Superset dashboards to monitor sales performance, booking
+status, booking trends, route performance, airport performance, and flight delay
+patterns.
+Added metadata tracking, row-count validation, checksum verification, retry
+handling, and runtime benchmarking to simulate production-grade data operations.
+10.2. GitHub README nên có
+ Project overview: mục tiêu, domain, kiến trúc và lý do dùng Docker thay cloud.
+ Architecture diagram: sources -> MinIO -> PostgreSQL -> dbt -> Superset.
+ Data sources: BTS, OurAirports, synthetic booking generator, optional OpenFlights.
+ How to run: prerequisites, docker compose commands, Airflow/Superset URLs.
+ Data model: raw/staging/intermediate/dim/fact/mart tables.
+ DAG screenshots và dashboard screenshots.
+ Performance report: row count, runtime, dbt test results, limitations.
+ Honesty note: booking/payment là synthetic để tránh privacy/commercial data issues.
+11. Rủi ro, giới hạn và cách trình bày trung thực
+Rủi ro/giới hạn Cách xử lý
+Booking/sales thật không public Dùng synthetic generator và ghi rõ trong README/CV.
+OpenFlights route data cũ Chỉ dùng optional/historical reference, không gọi là realtime 
+data.
+PostgreSQL không phải Snowflake Ghi là local analytical warehouse simulation; tập trung vào 
+modeling và orchestration.
+Superset không phải Tableau Ghi là BI dashboard replacement for local portfolio.
+1M records có thể nặng trên máy yếu Cho biến ROW_COUNT trong .env, mặc định 100k, benchmark 
+riêng 1M khi cần demo.
+Không có cloud deployment Nhấn mạnh Dockerized cloud-style pipeline để tránh chi phí 
+nhưng giữ kiến trúc tương đương.
+Cách viết trung thực nhưng mạnh
+Không ghi 'deployed on AWS' nếu không triển khai cloud thật. Nên ghi 'Dockerized simulation of a cloud-style 
+aviation data warehouse pipeline'. Điều này vẫn thể hiện được kỹ năng Airflow, dbt, warehouse modeling, data 
+quality, dashboard và pipeline observability.
+
+===== PAGE 11 =====
+
+Dockerized Aviation Data Warehouse Pipeline  |  11
+12. Nguồn tham khảo
+Các nguồn dưới đây dùng để thiết kế kiến trúc, chọn dataset và mapping công cụ cloud sang Docker/local. 
+Khi đưa vào README, nên dẫn link trực tiếp đến từng nguồn.
+[1] Apache Airflow - Running Airflow in Docker: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/
+index.html
+[2] Apache Airflow - DAGs core concepts: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html
+[3] Apache Airflow - Tasks core concepts: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/tasks.html
+[4] BTS Airline On-Time Statistics: https://www.transtats.bts.gov/ontime/
+[5] BTS On-Time Performance Data Database: https://www.transtats.bts.gov/Tables.asp?QO_VQ=EFD
+[6] OurAirports open data downloads: https://ourairports.com/data/
+[7] OpenFlights airport, airline and route data: https://openflights.org/data.php
+[8] MinIO S3-compatible object storage: https://github.com/minio/minio
+[9] dbt SQL models: https://docs.getdbt.com/docs/build/sql-models
+[10] dbt data tests: https://docs.getdbt.com/docs/build/data-tests
+[11] Apache Superset overview: https://superset.apache.org/
+[12] PostgreSQL COPY command: https://www.postgresql.org/docs/current/sql-copy.html
+Phụ lục A - Checklist triển khai nhanh
+ Tạo docker-compose.yml với Airflow, MinIO, warehouse Postgres, dbt, Superset.
+ Tạo schemas.sql: raw, staging, intermediate, mart, metadata.
+ Viết generate_booking_events.py có seed và ROW_COUNT config.
+ Viết DAG aviation_daily_pipeline.py theo task breakdown.
+ Viết dbt models theo layer và thêm schema.yml tests.
+ Tạo Superset dashboard từ 7 marts.
+ Chạy benchmark và lưu docs/performance_report.md.
+ Chụp screenshot Airflow/MinIO/dbt/Superset cho README.
+Phụ lục B - Naming convention
+Schemas:
+  raw, staging, intermediate, mart, metadata
+Tables:
+  raw_<source>_<entity>
+  stg_<entity>
+  int_<business_logic>
+  dim_<dimension>
+  fact_<event>
+  mart_<business_area>
+Airflow DAGs:
+  aviation_daily_pipeline
+  aviation_backfill_pipeline
+MinIO buckets:
+  aviation-raw
+  aviation-archive
+  aviation-quality-reports
