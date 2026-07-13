@@ -1,5 +1,7 @@
 # Pipeline Flow
 
+## Batch Warehouse DAG
+
 Airflow DAG: `aviation_daily_pipeline`
 
 ```text
@@ -20,6 +22,41 @@ start
 end
 ```
 
+## Kafka Streaming DAG
+
+Airflow DAG: `aviation_streaming_demo`
+
+```text
+start
+  -> ensure_streaming_tables
+  -> produce_booking_payment_events
+  -> consume_to_raw_stream_tables
+  -> reconcile_streaming_counts
+end
+```
+
+## Spark Feature Processing
+
+Spark job: `spark/jobs/aviation_feature_job.py`
+
+```text
+start
+  -> read BTS flight CSV
+  -> read generated bookings CSV
+  -> compute route/airline delay features
+  -> compute route booking features
+  -> write mart.spark_route_delay_features
+  -> write mart.spark_route_booking_features
+  -> write metadata.spark_job_audit
+end
+```
+
+Run with:
+
+```powershell
+scripts/run_spark_feature_job.ps1
+```
+
 ## Failure Behavior
 
 - Source download and generation tasks retry twice.
@@ -30,3 +67,5 @@ end
 - Warehouse load uses a database transaction.
 - dbt failures stop downstream mart/test tasks.
 - Metadata update uses `all_done` so failed runs can still be traceable.
+- Kafka consumer uses `event_id` idempotency and writes malformed events to `metadata.streaming_dlq`.
+- Spark writes `metadata.spark_job_audit` with source row counts, output row counts, status, and error message.

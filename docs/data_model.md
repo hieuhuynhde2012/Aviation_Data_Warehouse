@@ -57,6 +57,14 @@ The mart layer is intentionally denormalized for Superset.
 - Customer segment performance.
 - Flight delay analysis by airline, airport, route, and cause.
 
+## Spark Feature Tables
+
+Spark writes feature tables back into the mart and metadata layers.
+
+- `mart.spark_route_delay_features`: route/airline delay, cancellation, distance, and delay-cause features from BTS flight data.
+- `mart.spark_route_booking_features`: route-level booking count, channel, customer, and ticket value features from generated booking events.
+- `metadata.spark_job_audit`: Spark job run metadata, source row counts, output row counts, status, and error message.
+
 ## Metadata And Quality Tables
 
 - `metadata.pipeline_file_registry`: file-level registry and checksums.

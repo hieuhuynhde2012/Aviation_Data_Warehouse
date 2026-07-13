@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
-  <title id="title">Dockerized Aviation Data Warehouse Pipeline Architecture</title>
-  <desc id="desc">Architecture diagram showing data sources, Airflow orchestration, MinIO raw storage, PostgreSQL warehouse, dbt transformations, Superset dashboards, and metadata tracking.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title desc">
+  <title id="title">Dockerized Aviation Data Warehouse Architecture With Kafka And Spark</title>
+  <desc id="desc">Architecture diagram showing data sources, Airflow orchestration, MinIO raw storage, Kafka streaming, Spark feature processing, PostgreSQL warehouse, dbt transformations, Superset dashboards, and metadata tracking.</desc>
   <defs>
     <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L10,5 L0,10 Z" fill="#334155"/>
@@ -12,8 +12,8 @@
       .bg { fill: #f7f9fc; }
       .title { font: 700 34px Arial, sans-serif; fill: #102033; }
       .subtitle { font: 400 16px Arial, sans-serif; fill: #526173; }
-      .group-title { font: 700 16px Arial, sans-serif; fill: #263244; }
-      .box-title { font: 700 17px Arial, sans-serif; fill: #102033; }
+      .group-title { font: 700 15px Arial, sans-serif; fill: #263244; }
+      .box-title { font: 700 16px Arial, sans-serif; fill: #102033; }
       .box-text { font: 400 13px Arial, sans-serif; fill: #475569; }
       .small { font: 400 12px Arial, sans-serif; fill: #64748b; }
       .pill { font: 700 12px Arial, sans-serif; fill: #ffffff; }
@@ -21,133 +21,156 @@
       .source { fill: #ffffff; stroke: #2f80ed; stroke-width: 2; }
       .airflow { fill: #ffffff; stroke: #f97316; stroke-width: 2; }
       .minio { fill: #ffffff; stroke: #0f9f6e; stroke-width: 2; }
+      .kafka { fill: #ffffff; stroke: #111827; stroke-width: 2; }
+      .spark { fill: #ffffff; stroke: #e11d48; stroke-width: 2; }
       .postgres { fill: #ffffff; stroke: #7c3aed; stroke-width: 2; }
       .dbt { fill: #ffffff; stroke: #db2777; stroke-width: 2; }
       .superset { fill: #ffffff; stroke: #0891b2; stroke-width: 2; }
       .metadata { fill: #ffffff; stroke: #64748b; stroke-width: 2; }
       .arrow { stroke: #334155; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
       .dash { stroke: #64748b; stroke-width: 2; fill: none; stroke-dasharray: 7 7; marker-end: url(#arrow); }
+      .soft { stroke: #94a3b8; stroke-width: 1.7; fill: none; marker-end: url(#arrow); }
     </style>
   </defs>
 
-  <rect class="bg" width="1440" height="900"/>
-  <text x="72" y="62" class="title">Dockerized Aviation Data Warehouse Pipeline</text>
-  <text x="72" y="92" class="subtitle">BTS + OurAirports + synthetic booking/payment events -> MinIO -> PostgreSQL -> dbt marts -> Superset dashboards</text>
+  <rect class="bg" width="1600" height="980"/>
+  <text x="64" y="58" class="title">Dockerized Aviation Data Warehouse Pipeline</text>
+  <text x="64" y="88" class="subtitle">Batch warehouse + Kafka streaming sidecar + Spark feature processing + dbt marts + Superset dashboards</text>
 
-  <rect x="56" y="128" width="1328" height="690" rx="18" class="panel"/>
+  <rect x="48" y="120" width="1504" height="770" rx="18" class="panel"/>
 
-  <text x="92" y="166" class="group-title">1. Data Sources</text>
-  <text x="376" y="166" class="group-title">2. Orchestration</text>
-  <text x="610" y="166" class="group-title">3. Raw Lake</text>
-  <text x="824" y="166" class="group-title">4. Warehouse</text>
-  <text x="1060" y="166" class="group-title">5. Transform</text>
-  <text x="1238" y="166" class="group-title">6. BI</text>
+  <text x="82" y="158" class="group-title">1. Sources</text>
+  <text x="342" y="158" class="group-title">2. Orchestration</text>
+  <text x="574" y="158" class="group-title">3. Storage / Stream</text>
+  <text x="820" y="158" class="group-title">4. Spark Processing</text>
+  <text x="1056" y="158" class="group-title">5. Warehouse + dbt</text>
+  <text x="1376" y="158" class="group-title">6. BI / Evidence</text>
 
-  <rect x="84" y="200" width="235" height="112" rx="10" class="source" filter="url(#shadow)"/>
-  <text x="108" y="234" class="box-title">BTS On-Time CSV</text>
-  <text x="108" y="260" class="box-text">Flight status, delay,</text>
-  <text x="108" y="280" class="box-text">cancellation, route</text>
-  <text x="108" y="300" class="small">Default: 2026-04</text>
+  <rect x="78" y="192" width="218" height="104" rx="10" class="source" filter="url(#shadow)"/>
+  <text x="102" y="226" class="box-title">BTS On-Time CSV</text>
+  <text x="102" y="252" class="box-text">Flight delay, route,</text>
+  <text x="102" y="272" class="box-text">cancellation signals</text>
 
-  <rect x="84" y="344" width="235" height="112" rx="10" class="source" filter="url(#shadow)"/>
-  <text x="108" y="378" class="box-title">OurAirports CSV</text>
-  <text x="108" y="404" class="box-text">Airport, country,</text>
-  <text x="108" y="424" class="box-text">region reference data</text>
-  <text x="108" y="444" class="small">Public CSV snapshots</text>
+  <rect x="78" y="324" width="218" height="104" rx="10" class="source" filter="url(#shadow)"/>
+  <text x="102" y="358" class="box-title">OurAirports CSV</text>
+  <text x="102" y="384" class="box-text">Airport, country,</text>
+  <text x="102" y="404" class="box-text">region reference data</text>
 
-  <rect x="84" y="488" width="235" height="124" rx="10" class="source" filter="url(#shadow)"/>
-  <text x="108" y="522" class="box-title">Synthetic Events</text>
-  <text x="108" y="548" class="box-text">Bookings, payments,</text>
-  <text x="108" y="568" class="box-text">revenue, customers</text>
-  <text x="108" y="588" class="small">Seeded and reproducible</text>
+  <rect x="78" y="456" width="218" height="118" rx="10" class="source" filter="url(#shadow)"/>
+  <text x="102" y="490" class="box-title">Synthetic Business Data</text>
+  <text x="102" y="516" class="box-text">Bookings, payments,</text>
+  <text x="102" y="536" class="box-text">dirty CDC-like events</text>
+  <text x="102" y="556" class="small">Generated from real routes</text>
 
-  <rect x="370" y="320" width="196" height="176" rx="12" class="airflow" filter="url(#shadow)"/>
-  <text x="398" y="356" class="box-title">Apache Airflow</text>
-  <text x="398" y="384" class="box-text">DAG scheduling</text>
-  <text x="398" y="406" class="box-text">Retries and dependency</text>
-  <text x="398" y="428" class="box-text">Validation tasks</text>
-  <text x="398" y="450" class="box-text">dbt run/test trigger</text>
-  <rect x="398" y="466" width="92" height="24" rx="12" fill="#f97316"/>
-  <text x="414" y="483" class="pill">DAILY 02:00</text>
+  <rect x="78" y="604" width="218" height="94" rx="10" class="source" filter="url(#shadow)"/>
+  <text x="102" y="638" class="box-title">CSV Files</text>
+  <text x="102" y="664" class="box-text">data/input + generated</text>
+  <text x="102" y="684" class="small">Used by Spark jobs</text>
 
-  <rect x="620" y="224" width="180" height="104" rx="10" class="minio" filter="url(#shadow)"/>
-  <text x="646" y="258" class="box-title">MinIO Raw</text>
-  <text x="646" y="284" class="box-text">aviation-raw</text>
-  <text x="646" y="304" class="small">Partitioned files</text>
+  <rect x="338" y="282" width="190" height="178" rx="12" class="airflow" filter="url(#shadow)"/>
+  <text x="366" y="318" class="box-title">Apache Airflow</text>
+  <text x="366" y="346" class="box-text">Batch DAG</text>
+  <text x="366" y="368" class="box-text">Streaming DAG</text>
+  <text x="366" y="390" class="box-text">Retries + metadata</text>
+  <text x="366" y="412" class="box-text">dbt run/test trigger</text>
+  <rect x="366" y="430" width="90" height="24" rx="12" fill="#f97316"/>
+  <text x="382" y="447" class="pill">SCHEDULE</text>
 
-  <rect x="620" y="368" width="180" height="104" rx="10" class="minio" filter="url(#shadow)"/>
-  <text x="646" y="402" class="box-title">MinIO Archive</text>
-  <text x="646" y="428" class="box-text">aviation-archive</text>
-  <text x="646" y="448" class="small">Successful loads</text>
+  <rect x="580" y="198" width="184" height="96" rx="10" class="minio" filter="url(#shadow)"/>
+  <text x="606" y="232" class="box-title">MinIO Raw Lake</text>
+  <text x="606" y="258" class="box-text">aviation-raw</text>
+  <text x="606" y="276" class="small">Partitioned objects</text>
 
-  <rect x="620" y="512" width="180" height="104" rx="10" class="minio" filter="url(#shadow)"/>
-  <text x="646" y="546" class="box-title">Quality Reports</text>
-  <text x="646" y="572" class="box-text">Schema checks</text>
-  <text x="646" y="592" class="small">Row count + checksum</text>
+  <rect x="580" y="326" width="184" height="96" rx="10" class="minio" filter="url(#shadow)"/>
+  <text x="606" y="360" class="box-title">Quality Reports</text>
+  <text x="606" y="386" class="box-text">DQ files + profile</text>
+  <text x="606" y="404" class="small">Record-level errors</text>
 
-  <rect x="850" y="206" width="188" height="74" rx="10" class="postgres" filter="url(#shadow)"/>
-  <text x="880" y="238" class="box-title">raw schema</text>
-  <text x="880" y="260" class="small">Source-shaped tables</text>
+  <rect x="580" y="474" width="184" height="116" rx="10" class="kafka" filter="url(#shadow)"/>
+  <text x="606" y="508" class="box-title">Kafka</text>
+  <text x="606" y="534" class="box-text">booking_events</text>
+  <text x="606" y="554" class="box-text">payment_events</text>
+  <rect x="606" y="566" width="70" height="22" rx="11" fill="#111827"/>
+  <text x="622" y="582" class="pill">EVENTS</text>
 
-  <rect x="850" y="308" width="188" height="74" rx="10" class="postgres" filter="url(#shadow)"/>
-  <text x="880" y="340" class="box-title">staging schema</text>
-  <text x="880" y="362" class="small">Clean names and types</text>
+  <rect x="812" y="214" width="210" height="118" rx="12" class="spark" filter="url(#shadow)"/>
+  <text x="842" y="250" class="box-title">Spark Standalone</text>
+  <text x="842" y="278" class="box-text">Large CSV processing</text>
+  <text x="842" y="300" class="box-text">Route/airline features</text>
+  <rect x="842" y="312" width="80" height="22" rx="11" fill="#e11d48"/>
+  <text x="861" y="328" class="pill">SPARK</text>
 
-  <rect x="850" y="410" width="188" height="74" rx="10" class="postgres" filter="url(#shadow)"/>
-  <text x="880" y="442" class="box-title">intermediate</text>
-  <text x="880" y="464" class="small">Reusable business logic</text>
+  <rect x="812" y="362" width="210" height="128" rx="12" class="spark" filter="url(#shadow)"/>
+  <text x="842" y="398" class="box-title">PySpark Job</text>
+  <text x="842" y="426" class="box-text">aviation_feature_job.py</text>
+  <text x="842" y="448" class="box-text">Delay + booking features</text>
+  <text x="842" y="470" class="small">Writes audit metadata</text>
 
-  <rect x="850" y="512" width="188" height="88" rx="10" class="postgres" filter="url(#shadow)"/>
-  <text x="880" y="544" class="box-title">mart schema</text>
-  <text x="880" y="566" class="small">Dimensions, facts,</text>
-  <text x="880" y="584" class="small">7 analytics marts</text>
+  <rect x="1056" y="190" width="194" height="70" rx="10" class="postgres" filter="url(#shadow)"/>
+  <text x="1084" y="222" class="box-title">raw schema</text>
+  <text x="1084" y="244" class="small">Batch + stream raw tables</text>
 
-  <rect x="1090" y="300" width="178" height="178" rx="12" class="dbt" filter="url(#shadow)"/>
-  <text x="1122" y="336" class="box-title">dbt Core</text>
-  <text x="1122" y="364" class="box-text">Staging models</text>
-  <text x="1122" y="386" class="box-text">Dimensions + facts</text>
-  <text x="1122" y="408" class="box-text">Incremental marts</text>
-  <text x="1122" y="430" class="box-text">Data tests</text>
-  <rect x="1122" y="448" width="74" height="24" rx="12" fill="#db2777"/>
-  <text x="1141" y="465" class="pill">SQL</text>
+  <rect x="1056" y="286" width="194" height="70" rx="10" class="postgres" filter="url(#shadow)"/>
+  <text x="1084" y="318" class="box-title">staging schema</text>
+  <text x="1084" y="340" class="small">Standardized values</text>
 
-  <rect x="1246" y="230" width="112" height="300" rx="12" class="superset" filter="url(#shadow)"/>
-  <text x="1270" y="264" class="box-title">Superset</text>
-  <text x="1270" y="296" class="box-text">Executive</text>
-  <text x="1270" y="318" class="box-text">overview</text>
-  <text x="1270" y="354" class="box-text">Booking</text>
-  <text x="1270" y="376" class="box-text">trend</text>
-  <text x="1270" y="412" class="box-text">Flight and</text>
-  <text x="1270" y="434" class="box-text">route KPIs</text>
-  <rect x="1270" y="480" width="62" height="24" rx="12" fill="#0891b2"/>
-  <text x="1284" y="497" class="pill">BI</text>
+  <rect x="1056" y="382" width="194" height="70" rx="10" class="postgres" filter="url(#shadow)"/>
+  <text x="1084" y="414" class="box-title">intermediate</text>
+  <text x="1084" y="436" class="small">Reusable business logic</text>
 
-  <rect x="370" y="648" width="668" height="94" rx="12" class="metadata" filter="url(#shadow)"/>
-  <text x="400" y="684" class="box-title">Metadata Tracking in PostgreSQL</text>
-  <text x="400" y="712" class="box-text">pipeline_file_registry: source, partition, file size, row count, checksum, load status</text>
-  <text x="400" y="734" class="box-text">pipeline_run_log: DAG run, input rows, loaded rows, dbt/test status, runtime</text>
+  <rect x="1056" y="478" width="194" height="88" rx="10" class="postgres" filter="url(#shadow)"/>
+  <text x="1084" y="510" class="box-title">mart schema</text>
+  <text x="1084" y="532" class="small">Facts, dashboards,</text>
+  <text x="1084" y="550" class="small">Spark feature tables</text>
 
-  <path class="arrow" d="M319 256 C345 256 346 345 370 356"/>
-  <path class="arrow" d="M319 400 L370 400"/>
-  <path class="arrow" d="M319 550 C345 550 346 463 370 452"/>
+  <rect x="1276" y="294" width="160" height="150" rx="12" class="dbt" filter="url(#shadow)"/>
+  <text x="1306" y="330" class="box-title">dbt Core</text>
+  <text x="1306" y="358" class="box-text">Staging</text>
+  <text x="1306" y="380" class="box-text">Dims + facts</text>
+  <text x="1306" y="402" class="box-text">Marts + tests</text>
+  <rect x="1306" y="416" width="56" height="22" rx="11" fill="#db2777"/>
+  <text x="1320" y="432" class="pill">SQL</text>
 
-  <path class="arrow" d="M566 372 C590 332 594 286 620 276"/>
-  <path class="arrow" d="M566 410 C590 414 594 418 620 420"/>
-  <path class="arrow" d="M566 448 C590 500 594 548 620 564"/>
+  <rect x="1404" y="206" width="112" height="226" rx="12" class="superset" filter="url(#shadow)"/>
+  <text x="1426" y="240" class="box-title">Superset</text>
+  <text x="1426" y="270" class="box-text">Executive</text>
+  <text x="1426" y="292" class="box-text">dashboards</text>
+  <text x="1426" y="328" class="box-text">DQ / ops</text>
+  <text x="1426" y="350" class="box-text">evidence</text>
+  <rect x="1426" y="390" width="58" height="22" rx="11" fill="#0891b2"/>
+  <text x="1439" y="406" class="pill">BI</text>
 
-  <path class="arrow" d="M800 276 C826 276 826 244 850 244"/>
-  <path class="arrow" d="M944 280 L944 308"/>
-  <path class="arrow" d="M944 382 L944 410"/>
-  <path class="arrow" d="M944 484 L944 512"/>
+  <rect x="338" y="732" width="912" height="104" rx="12" class="metadata" filter="url(#shadow)"/>
+  <text x="370" y="768" class="box-title">Metadata, Quality, Quarantine, And Audit Tables</text>
+  <text x="370" y="796" class="box-text">metadata.raw_load_audit | metadata.dq_record_errors | metadata.reconciliation_summary | quarantine.invalid_records</text>
+  <text x="370" y="818" class="box-text">metadata.streaming_dlq | metadata.streaming_reconciliation | metadata.spark_job_audit</text>
 
-  <path class="arrow" d="M1038 556 C1062 520 1066 456 1090 432"/>
-  <path class="arrow" d="M1268 390 L1246 390"/>
-  <path class="arrow" d="M1038 556 C1120 556 1178 516 1246 478"/>
+  <path class="arrow" d="M296 244 C322 244 318 322 338 326"/>
+  <path class="arrow" d="M296 376 L338 376"/>
+  <path class="arrow" d="M296 520 C322 520 318 426 338 418"/>
+  <path class="soft" d="M296 650 C520 650 620 300 812 270"/>
 
-  <path class="dash" d="M468 496 L468 648"/>
-  <path class="dash" d="M710 616 L710 648"/>
-  <path class="dash" d="M944 600 L944 648"/>
+  <path class="arrow" d="M528 330 C552 294 552 250 580 246"/>
+  <path class="arrow" d="M528 374 L580 374"/>
+  <path class="arrow" d="M528 420 C552 474 552 526 580 532"/>
 
-  <rect x="84" y="780" width="1274" height="1.5" fill="#d8e1ee"/>
-  <text x="92" y="806" class="small">Local services: Airflow UI :8080 | MinIO Console :9001 | PostgreSQL warehouse :5433 | Superset :8088</text>
+  <path class="arrow" d="M764 532 L1056 226"/>
+  <path class="arrow" d="M764 246 C904 246 934 210 1056 226"/>
+  <path class="arrow" d="M1022 426 C1040 448 1040 500 1056 522"/>
+  <path class="arrow" d="M1022 274 L1056 522"/>
+
+  <path class="arrow" d="M1153 260 L1153 286"/>
+  <path class="arrow" d="M1153 356 L1153 382"/>
+  <path class="arrow" d="M1153 452 L1153 478"/>
+  <path class="arrow" d="M1250 522 C1270 488 1272 430 1276 398"/>
+  <path class="arrow" d="M1250 522 C1308 522 1362 442 1404 374"/>
+  <path class="arrow" d="M1436 360 L1436 360"/>
+
+  <path class="dash" d="M432 460 L432 732"/>
+  <path class="dash" d="M672 590 L672 732"/>
+  <path class="dash" d="M917 490 L917 732"/>
+  <path class="dash" d="M1153 566 L1153 732"/>
+
+  <rect x="78" y="900" width="1438" height="1.5" fill="#d8e1ee"/>
+  <text x="86" y="928" class="small">Local UIs: Airflow :8080 | Spark Master :8081 | Spark Worker :8082 | Kafka UI :8089 | MinIO :9001 | Superset :8088 | PostgreSQL warehouse :5433</text>
 </svg>

@@ -12,6 +12,10 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES:-False}
     AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+    AIRFLOW__WEBSERVER__WORKERS: ${AIRFLOW_WEBSERVER_WORKERS:-1}
+    AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_TIMEOUT: ${AIRFLOW_WEBSERVER_MASTER_TIMEOUT:-300}
+    AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT: ${AIRFLOW_WEBSERVER_WORKER_TIMEOUT:-300}
+    PYTHONPATH: /opt/airflow
     WAREHOUSE_HOST: ${WAREHOUSE_HOST:-postgres-warehouse}
     WAREHOUSE_DB: ${WAREHOUSE_DB:-aviation_dw}
     WAREHOUSE_USER: ${WAREHOUSE_USER:-aviation}
@@ -39,12 +43,16 @@ x-airflow-common: &airflow-common
     MISSING_OPTIONAL_RATE: ${MISSING_OPTIONAL_RATE:-0.02}
     PAYMENT_MISMATCH_RATE: ${PAYMENT_MISMATCH_RATE:-0.015}
     CRITICAL_INVALID_RATE: ${CRITICAL_INVALID_RATE:-0.003}
+    KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+    KAFKA_BOOKING_TOPIC: ${KAFKA_BOOKING_TOPIC:-booking_events}
+    KAFKA_PAYMENT_TOPIC: ${KAFKA_PAYMENT_TOPIC:-payment_events}
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/logs:/opt/airflow/logs
     - ./airflow/plugins:/opt/airflow/plugins
     - ./data:/opt/airflow/data
     - ./ingestion:/opt/airflow/ingestion
+    - ./streaming:/opt/airflow/streaming
     - ./dbt:/opt/airflow/dbt
     - ./requirements.txt:/opt/airflow/requirements.txt
   user: "${AIRFLOW_UID:-50000}:0"
@@ -119,6 +127,58 @@ services:
       exit 0;
       "
 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc -w 2 localhost 2181 | grep Zookeeper"]
+      interval: 10s
+      retries: 10
+      start_period: 10s
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-log:/var/lib/zookeeper/log
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+    ports:
+      - "${KAFKA_EXTERNAL_PORT:-9094}:9094"
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      retries: 10
+      start_period: 20s
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    environment:
+      KAFKA_CLUSTERS_0_NAME: aviation-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "${KAFKA_UI_PORT:-8089}:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
   airflow-init:
     <<: *airflow-common
     entrypoint: /bin/bash
@@ -166,6 +226,70 @@ services:
         condition: service_healthy
     entrypoint: ["tail", "-f", "/dev/null"]
 
+  spark-master:
+    image: bitnami/spark:3.5.1
+    environment:
+      SPARK_MODE: master
+      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
+      SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: "no"
+      SPARK_SSL_ENABLED: "no"
+    ports:
+      - "${SPARK_MASTER_UI_PORT:-8081}:8080"
+      - "${SPARK_MASTER_PORT:-7077}:7077"
+    volumes:
+      - ./spark/jobs:/opt/bitnami/spark/jobs
+      - ./data:/opt/bitnami/spark/data
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport socket\ns=socket.socket(); s.settimeout(2); s.connect(('localhost',7077)); s.close()\nPY"]
+      interval: 10s
+      retries: 10
+      start_period: 20s
+
+  spark-worker:
+    image: bitnami/spark:3.5.1
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: ${SPARK_MASTER_URL:-spark://spark-master:7077}
+      SPARK_WORKER_MEMORY: 2g
+      SPARK_WORKER_CORES: 2
+      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
+      SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: "no"
+      SPARK_SSL_ENABLED: "no"
+    ports:
+      - "${SPARK_WORKER_UI_PORT:-8082}:8081"
+    volumes:
+      - ./spark/jobs:/opt/bitnami/spark/jobs
+      - ./data:/opt/bitnami/spark/data
+    depends_on:
+      spark-master:
+        condition: service_healthy
+
+  spark-submit:
+    image: bitnami/spark:3.5.1
+    environment:
+      SPARK_MASTER_URL: ${SPARK_MASTER_URL:-spark://spark-master:7077}
+      WAREHOUSE_HOST: ${WAREHOUSE_HOST:-postgres-warehouse}
+      WAREHOUSE_DB: ${WAREHOUSE_DB:-aviation_dw}
+      WAREHOUSE_USER: ${WAREHOUSE_USER:-aviation}
+      WAREHOUSE_PASSWORD: ${WAREHOUSE_PASSWORD:-aviation}
+      BTS_YEAR: ${BTS_YEAR:-2026}
+      BTS_MONTH: ${BTS_MONTH:-4}
+      SPARK_DRIVER_MEMORY: ${SPARK_DRIVER_MEMORY:-1g}
+      SPARK_EXECUTOR_MEMORY: ${SPARK_EXECUTOR_MEMORY:-1g}
+    volumes:
+      - ./spark/jobs:/opt/bitnami/spark/jobs
+      - ./data:/opt/bitnami/spark/data
+    depends_on:
+      spark-master:
+        condition: service_healthy
+      spark-worker:
+        condition: service_started
+      postgres-warehouse:
+        condition: service_healthy
+    entrypoint: ["tail", "-f", "/dev/null"]
+
   superset:
     image: apache/superset:4.0.2
     environment:
@@ -208,3 +332,6 @@ volumes:
   postgres-superset-db:
   minio-data:
   superset-home:
+  kafka-data:
+  zookeeper-data:
+  zookeeper-log:

@@ -25,6 +25,8 @@ The goal is not only to produce dashboards, but to show the data engineering con
 9. Build staging, intermediate, dimensions, facts, and marts with dbt.
 10. Run dbt tests.
 11. Publish BI-ready datasets and dashboard assets to Superset.
+12. Optionally replay booking/payment rows as Kafka events into raw streaming tables.
+13. Optionally run Spark feature jobs over large source CSVs and land feature tables back into the warehouse.
 
 ## Production-Style Controls
 
@@ -41,6 +43,8 @@ The project includes controls commonly expected in real data platforms:
 - Incremental partition replacement for reruns and backfills.
 - Source-to-target reconciliation summary.
 - dbt tests for uniqueness, non-null, accepted values, relationships, and numeric constraints.
+- Kafka event keys, event envelopes, idempotent stream inserts, DLQ, and streaming reconciliation.
+- Spark feature processing for route/airline delay aggregates and route booking features.
 
 ## Warehouse Model
 
@@ -55,6 +59,10 @@ The warehouse follows a layered model:
 | `metadata` | Run logs, DQ errors, load audit, reconciliation |
 | `quarantine` | Invalid records with raw JSON payloads and reasons |
 
+Streaming events land in `raw.raw_booking_events_stream` and `raw.raw_payment_events_stream`. Invalid stream messages land in `metadata.streaming_dlq`.
+
+Spark feature outputs land in `mart.spark_route_delay_features`, `mart.spark_route_booking_features`, and `metadata.spark_job_audit`.
+
 ## What To Demo
 
 1. Airflow graph view for `aviation_daily_pipeline`.
@@ -64,6 +72,8 @@ The warehouse follows a layered model:
 5. `quarantine.invalid_records` showing invalid records were retained.
 6. dbt docs lineage from source to mart.
 7. Superset dashboard `Aviation Data Warehouse Operations`.
+8. Kafka UI showing `booking_events` and `payment_events`.
+9. Spark UI showing completed feature job stages.
 
 ## Interview Talking Points
 
@@ -71,4 +81,6 @@ The warehouse follows a layered model:
 - Hard errors are quarantined; soft issues are logged and standardized downstream.
 - Reruns are safe because file checksums and partition replacement prevent duplicate loads.
 - Reconciliation gives a clear source-to-target control before marts are trusted.
+- Kafka demonstrates event-driven ingestion, idempotent event processing, and DLQ handling.
+- Spark demonstrates distributed feature processing over large operational CSV data.
 - The dashboard includes business KPIs and operational DQ observability.

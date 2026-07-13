@@ -148,3 +148,88 @@ from mart.fact_payment p
 left join mart.fact_booking b
     on p.booking_id = b.booking_id
 where b.booking_id is null;
+
+-- 13. Streaming raw table counts.
+select 'raw_booking_events_stream' as object_name, count(*) as row_count
+from raw.raw_booking_events_stream
+union all
+select 'raw_payment_events_stream', count(*)
+from raw.raw_payment_events_stream
+union all
+select 'streaming_dlq', count(*)
+from metadata.streaming_dlq;
+
+-- 14. Latest streaming reconciliation.
+select
+    run_id,
+    topic_name,
+    produced_events,
+    consumed_events,
+    duplicate_events,
+    dlq_events,
+    difference,
+    status,
+    created_at
+from metadata.streaming_reconciliation
+order by created_at desc
+limit 10;
+
+-- 15. Recent booking stream events.
+select
+    event_time,
+    event_type,
+    entity_key,
+    kafka_topic,
+    kafka_partition,
+    kafka_offset,
+    payload ->> 'booking_status' as booking_status,
+    payload ->> 'route' as route
+from raw.raw_booking_events_stream
+order by ingested_at desc
+limit 10;
+
+-- 16. Spark job audit.
+select
+    job_name,
+    status,
+    source_flight_rows,
+    source_booking_rows,
+    output_route_delay_rows,
+    output_route_booking_rows,
+    started_at,
+    completed_at,
+    error_message
+from metadata.spark_job_audit
+order by completed_at desc
+limit 10;
+
+-- 17. Spark route delay features.
+select
+    route,
+    airline,
+    flight_count,
+    cancelled_count,
+    avg_arr_delay_minutes,
+    p95_arr_delay_minutes,
+    carrier_delay_minutes,
+    weather_delay_minutes,
+    nas_delay_minutes,
+    late_aircraft_delay_minutes
+from mart.spark_route_delay_features
+order by p95_arr_delay_minutes desc nulls last
+limit 20;
+
+-- 18. Spark route booking features.
+select
+    route,
+    booking_event_count,
+    confirmed_booking_events,
+    cancelled_booking_events,
+    distinct_customers,
+    total_ticket_value,
+    avg_ticket_price,
+    web_booking_events,
+    mobile_booking_events
+from mart.spark_route_booking_features
+order by total_ticket_value desc nulls last
+limit 20;

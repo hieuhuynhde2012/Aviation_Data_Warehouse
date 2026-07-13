@@ -10,12 +10,17 @@ Use this checklist when recording a portfolio demo or preparing screenshots for 
 | Airflow task graph | `aviation_daily_pipeline` graph view | Pipeline has clear stages: generate, upload, validate, load, reconcile, dbt, metadata |
 | Airflow custom image | `docker compose ps airflow-webserver airflow-scheduler` | Dependencies are baked into `aviation-airflow:2.9.3-python3.11` instead of installed at runtime |
 | MinIO raw buckets | <http://localhost:9001> | Source files are landed in S3-style object storage |
+| Kafka topics | <http://localhost:8089> | Booking/payment events are published to Kafka |
+| Spark master UI | <http://localhost:8081> | Spark standalone cluster is available for distributed processing |
+| Spark worker UI | <http://localhost:8082> | Spark worker is registered and can execute jobs |
 | Superset dashboard | <http://localhost:8088> | Marts are consumed by BI dashboards |
 | dbt docs lineage | `docker compose exec dbt dbt docs generate` | Transformations have lineage and documentation |
 | PostgreSQL reconciliation query | `sql/demo_queries.sql` query 1 | Source-to-target row counts are reconciled |
 | PostgreSQL DQ query | `sql/demo_queries.sql` query 2 | Record-level DQ errors are logged |
 | PostgreSQL quarantine query | `sql/demo_queries.sql` query 3 | Invalid records are isolated, not silently dropped |
 | Raw load audit query | `sql/demo_queries.sql` query 4 | Reruns are idempotent and checksum-aware |
+| Streaming reconciliation query | `sql/demo_queries.sql` query 14 | Kafka event counts are reconciled against raw stream tables |
+| Spark audit query | `sql/demo_queries.sql` query 16 | Spark feature job processed source files and wrote output tables |
 
 ## Current Local Run Snapshot
 
@@ -45,6 +50,30 @@ Current warehouse object counts:
 | `mart.mart_sales_performance` | 878 |
 | `quarantine.invalid_records` | 2,564 |
 
+Current streaming snapshot:
+
+| Object | Rows |
+| --- | ---: |
+| `raw.raw_booking_events_stream` | 500 |
+| `raw.raw_payment_events_stream` | 500 |
+| `metadata.streaming_dlq` | 0 |
+
+Latest streaming reconciliation:
+
+| Run ID | Topic | Produced | Consumed | DLQ | Status |
+| --- | --- | ---: | ---: | ---: | --- |
+| `manual__2026-06-29T02:00:00+00:00` | `booking_events` | 500 | 500 | 0 | PASSED |
+| `manual__2026-06-29T02:00:00+00:00` | `payment_events` | 500 | 500 | 0 | PASSED |
+
+Spark evidence to capture after running `scripts/run_spark_feature_job.ps1`:
+
+| Evidence | Where to capture | What it proves |
+| --- | --- | --- |
+| Spark application/stages | <http://localhost:8081> | Spark job ran on the standalone cluster |
+| `metadata.spark_job_audit` | `sql/demo_queries.sql` query 16 | Source row counts and output row counts were audited |
+| `mart.spark_route_delay_features` | `sql/demo_queries.sql` query 17 | Spark produced route/airline delay features |
+| `mart.spark_route_booking_features` | `sql/demo_queries.sql` query 18 | Spark produced route-level booking features |
+
 Top DQ rules observed:
 
 | Severity | Rule | Records |
@@ -70,6 +99,7 @@ Trigger `aviation_daily_pipeline` in Airflow, then run:
 ```powershell
 Get-Content superset/setup_assets.py | docker compose exec -T superset python -
 docker compose exec dbt dbt docs generate
+scripts/run_spark_feature_job.ps1
 docker compose exec -T airflow-scheduler airflow dags list-runs -d aviation_daily_pipeline --no-backfill -o table
 Get-Content sql/demo_queries.sql | docker compose exec -T postgres-warehouse psql -U aviation -d aviation_dw
 ```

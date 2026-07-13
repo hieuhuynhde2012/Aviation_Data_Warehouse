@@ -1,6 +1,6 @@
 # Dockerized Aviation Data Warehouse Pipeline
 
-Local portfolio project that simulates a cloud-style aviation analytics platform with Airflow, MinIO, PostgreSQL, dbt, and Superset.
+Local portfolio project that simulates a cloud-style aviation analytics platform with Airflow, MinIO, Kafka, Spark, PostgreSQL, dbt, and Superset.
 
 ![Dockerized Aviation Data Warehouse Pipeline architecture](docs/architecture_diagram.svg)
 
@@ -9,12 +9,15 @@ Local portfolio project that simulates a cloud-style aviation analytics platform
 - Public flight operations source: BTS Airline On-Time Performance.
 - Public reference source: OurAirports airports, countries, and regions.
 - Reproducible synthetic business source: bookings and payments linked to real flight routes.
+- Optional Kafka streaming sidecar for booking/payment events.
 - Intentional dirty data profile for realistic data engineering work: duplicates, casing/spacing issues, status synonyms, missing optional fields, negative values, timestamp ordering issues, and payment mismatches.
 - S3-like raw storage in MinIO with partitioned object keys.
+- Spark standalone cluster for large CSV feature processing and route-level aggregates.
 - PostgreSQL warehouse with raw, staging, intermediate, mart, and metadata schemas.
 - dbt transformations for dimensions, facts, and 7 analytics marts.
 - Airflow orchestration with retries, validation, raw load, dbt run/test, and metadata tracking.
 - Custom Airflow image with dependencies baked in for stable local runtime.
+- Kafka producer/consumer demo with idempotent event landing, DLQ, and streaming reconciliation.
 - Superset-ready marts for aviation sales, booking, route, airport, customer, and delay dashboards.
 - Production-style DQ controls: required-column checks, record-level error logging, quarantine, reconciliation, CDC-style dedupe, and idempotent file loads.
 
@@ -27,6 +30,8 @@ data/generated/                Synthetic bookings and payments
 data/quality_reports/          Validation output
 dbt/                           dbt project and tests
 ingestion/                     Download, generate, validate, upload, load scripts
+streaming/                     Kafka producer, consumer, and streaming reconciliation scripts
+spark/jobs/                    PySpark feature engineering jobs
 sql/                           Demo and validation queries for interviews
 warehouse/                     PostgreSQL init SQL
 superset/                      Dashboard exports and screenshots
@@ -82,9 +87,16 @@ Open:
 - Airflow: <http://localhost:8080> (`admin` / `admin`)
 - MinIO: <http://localhost:9001> (`minioadmin` / `minioadmin`)
 - Superset: <http://localhost:8088> (`admin` / `admin`)
+- Kafka UI: <http://localhost:8089>
+- Spark Master UI: <http://localhost:8081>
+- Spark Worker UI: <http://localhost:8082>
 - Warehouse: `localhost:5433`, database `aviation_dw`, user `aviation`, password `aviation`
 
 Trigger `aviation_daily_pipeline` from Airflow. The DAG downloads sources, generates synthetic data, uploads raw objects to MinIO, validates files, loads raw tables, runs dbt, tests data quality, and writes metadata.
+
+For Kafka streaming mode, trigger `aviation_streaming_demo`. The DAG produces booking/payment events to Kafka, consumes them into raw stream tables, and writes streaming reconciliation metadata.
+
+For Spark feature processing, run `spark/jobs/aviation_feature_job.py` with `spark-submit` to create `mart.spark_route_delay_features`, `mart.spark_route_booking_features`, and `metadata.spark_job_audit`.
 
 Bootstrap Superset assets after the DAG/dbt run succeeds:
 
@@ -102,6 +114,9 @@ Get-Content sql/demo_queries.sql | docker compose exec -T postgres-warehouse psq
 
 See [docs/evidence_checklist.md](docs/evidence_checklist.md) for screenshots and proof points to capture.
 See [docs/project_walkthrough.md](docs/project_walkthrough.md) for the portfolio/interview narrative.
+See [docs/streaming_architecture.md](docs/streaming_architecture.md) for the Kafka sidecar demo.
+See [docs/giai_thich_du_lieu.md](docs/giai_thich_du_lieu.md) for a Vietnamese explanation of the data.
+See [docs/spark_processing.md](docs/spark_processing.md) for the Spark feature processing layer.
 
 Manual dbt commands:
 
@@ -115,13 +130,13 @@ docker compose exec dbt dbt docs generate
 
 | Layer | Examples |
 | --- | --- |
-| Raw | `raw_bts_flights`, `raw_airports`, `raw_bookings`, `raw_payments` |
+| Raw | `raw_bts_flights`, `raw_airports`, `raw_bookings`, `raw_payments`, `raw_booking_events_stream`, `raw_payment_events_stream` |
 | Staging | `stg_flights`, `stg_airports`, `stg_bookings`, `stg_payments` |
 | Intermediate | `int_route_daily`, `int_flight_booking_bridge`, `int_customer_booking` |
 | Dimensions | `dim_airport`, `dim_airline`, `dim_route`, `dim_customer`, `dim_date` |
 | Facts | `fact_flight_status`, `fact_booking`, `fact_payment` |
-| Marts | 7 dashboard-facing mart tables |
-| Metadata | `pipeline_file_registry`, `pipeline_run_log` |
+| Marts | 7 dashboard-facing mart tables plus Spark feature tables |
+| Metadata | `pipeline_file_registry`, `pipeline_run_log`, `raw_load_audit`, `dq_record_errors`, `streaming_reconciliation`, `spark_job_audit` |
 
 ## Seven Marts
 
@@ -132,6 +147,12 @@ docker compose exec dbt dbt docs generate
 - `mart_airport_performance`
 - `mart_customer_segment`
 - `mart_flight_delay_analysis`
+
+## Spark Feature Tables
+
+- `mart.spark_route_delay_features`
+- `mart.spark_route_booking_features`
+- `metadata.spark_job_audit`
 
 ## Honesty Note
 
