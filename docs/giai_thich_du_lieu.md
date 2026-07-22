@@ -524,7 +524,7 @@ Hoac chay manual:
 ```powershell
 docker compose up -d spark-master spark-worker spark-submit
 Get-Content warehouse/05_spark_tables.sql | docker compose exec -T postgres-warehouse psql -U aviation -d aviation_dw
-docker compose exec spark-submit spark-submit --master spark://spark-master:7077 --packages org.postgresql:postgresql:42.7.3 /opt/bitnami/spark/jobs/aviation_feature_job.py
+docker compose exec spark-submit spark-submit --master spark://spark-master:7077 --packages org.postgresql:postgresql:42.7.3 /opt/spark/work-dir/jobs/aviation_feature_job.py
 ```
 
 Khi phong van co the noi:

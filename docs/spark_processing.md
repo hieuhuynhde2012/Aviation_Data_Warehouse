@@ -78,7 +78,7 @@ docker compose exec spark-submit spark-submit `
   --packages org.postgresql:postgresql:42.7.3 `
   --driver-memory 1g `
   --executor-memory 1g `
-  /opt/bitnami/spark/jobs/aviation_feature_job.py
+  /opt/spark/work-dir/jobs/aviation_feature_job.py
 ```
 
 Check output:

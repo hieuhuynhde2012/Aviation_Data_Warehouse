@@ -48,11 +48,10 @@ CHARTS = [
     {
         "name": "Total Revenue",
         "dataset": ("mart", "mart_sales_performance"),
-        "viz_type": "big_number",
+        "viz_type": "big_number_total",
         "params": {
             "metric": "sum__revenue",
-            "compare_lag": "10",
-            "compare_suffix": "over 10Y",
+            "time_range": "No filter",
             "y_axis_format": "$,.2f",
         },
         "width": 3,
@@ -61,11 +60,10 @@ CHARTS = [
     {
         "name": "Total Bookings",
         "dataset": ("mart", "mart_sales_performance"),
-        "viz_type": "big_number",
+        "viz_type": "big_number_total",
         "params": {
             "metric": "sum__booking_count",
-            "compare_lag": "10",
-            "compare_suffix": "over 10Y",
+            "time_range": "No filter",
             "y_axis_format": ",d",
         },
         "width": 3,
@@ -74,11 +72,10 @@ CHARTS = [
     {
         "name": "Average Ticket Value",
         "dataset": ("mart", "mart_sales_performance"),
-        "viz_type": "big_number",
+        "viz_type": "big_number_total",
         "params": {
             "metric": "avg__average_ticket_value",
-            "compare_lag": "10",
-            "compare_suffix": "over 10Y",
+            "time_range": "No filter",
             "y_axis_format": "$,.2f",
         },
         "width": 3,
@@ -87,11 +84,10 @@ CHARTS = [
     {
         "name": "Quarantined Records",
         "dataset": ("quarantine", "invalid_records"),
-        "viz_type": "big_number",
+        "viz_type": "big_number_total",
         "params": {
             "metric": "count",
-            "compare_lag": "10",
-            "compare_suffix": "over 10Y",
+            "time_range": "No filter",
             "y_axis_format": ",d",
         },
         "width": 3,

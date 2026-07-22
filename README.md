@@ -4,6 +4,38 @@ Local portfolio project that simulates a cloud-style aviation analytics platform
 
 ![Dockerized Aviation Data Warehouse Pipeline architecture](docs/architecture_diagram.svg)
 
+## Screenshots
+
+### Dashboard
+
+Superset dashboard over the mart layer, showing KPI cards, route revenue, booking trends, delay analysis, data quality evidence, and reconciliation status.
+
+![Superset dashboard](docs/screenshots/superset-dashboard.png)
+
+### Pipeline And Platform
+
+Airflow DAG graph for the batch pipeline:
+
+![Airflow DAG](docs/screenshots/airflow-dag.png)
+
+Kafka UI with booking and payment streaming topics:
+
+![Kafka UI](docs/screenshots/kafka-ui.png)
+
+Spark master UI with the standalone cluster and submitted Spark application:
+
+![Spark Master UI](docs/screenshots/spark-master-ui.png)
+
+### Data Engineering Evidence
+
+MinIO buckets used as S3-style raw and quality storage:
+
+![MinIO buckets](docs/screenshots/minio-buckets.png)
+
+SQL reconciliation evidence used in Superset SQL Lab / PostgreSQL validation:
+
+![SQL reconciliation](docs/screenshots/sql-reconciliation.png)
+
 ## What This Builds
 
 - Public flight operations source: BTS Airline On-Time Performance.
@@ -117,6 +149,7 @@ See [docs/project_walkthrough.md](docs/project_walkthrough.md) for the portfolio
 See [docs/streaming_architecture.md](docs/streaming_architecture.md) for the Kafka sidecar demo.
 See [docs/giai_thich_du_lieu.md](docs/giai_thich_du_lieu.md) for a Vietnamese explanation of the data.
 See [docs/spark_processing.md](docs/spark_processing.md) for the Spark feature processing layer.
+See [docs/cv_metrics.md](docs/cv_metrics.md) for quantified CV bullets and verified project metrics.
 
 Manual dbt commands:
 

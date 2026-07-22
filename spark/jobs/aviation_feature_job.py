@@ -36,12 +36,12 @@ def csv_path(kind: str) -> str:
         month = int(env("BTS_MONTH", "4"))
         return env(
             "SPARK_BTS_PATH",
-            f"/opt/bitnami/spark/data/input/bts/bts_on_time_{year}_{month:02d}.csv",
+            f"/opt/spark/work-dir/data/input/bts/bts_on_time_{year}_{month:02d}.csv",
         )
     if kind == "bookings":
         return env(
             "SPARK_BOOKINGS_PATH",
-            "/opt/bitnami/spark/data/generated/bookings/bookings.csv",
+            "/opt/spark/work-dir/data/generated/bookings/bookings.csv",
         )
     raise ValueError(f"Unknown csv kind: {kind}")
 
